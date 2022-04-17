@@ -1,0 +1,132 @@
+---
+title: "Regular Expressions 3"
+author: "Kofwana Lawson"
+date: "April 13, 2022"
+output: html_notebook
+---
+
+### Load Packages
+```{r message=F, warning=false}
+library("tidyverse")
+options(dplyr.summarise.inform = FALSE)
+
+```
+
+### Creating New variable year Based on first Digits of tourney_id
+```{r message=F, warning=false}
+data1<-
+  data1%>%
+  mutate(year = str_extract(tourney_id, pattern = ("^\\d+")))
+```
+
+### Create a pattern to extract the scores
+```{r message=F, warning=false}
+data2<-
+  data1 %>%
+  mutate(newScore = gsub(pattern = "\\(\\d+)",
+                         replacement = "", score))
+```
+
+### Remove the characarters from the variable(RET)
+```{r message=F, warning=false}
+data2<-
+  data1 %>%
+  mutate(newScore = gsub(pattern = "\\(\\d+)",
+                         replacement = "", score))%>%
+  mutate(newScore = gsub(pattern = ("RET"), replacement = "", newScore))%>%
+```
+
+### Separate the new variable into columns
+```{r message=F, warning=false}
+data2<-
+  data1 %>%
+  mutate(newScore = gsub(pattern = "\\(\\d+)",
+                         replacement = "", score))%>%
+  mutate(newScore = gsub(pattern = ("RET"), replacement = "", newScore))%>%
+  separate(newScore,c("Set.1","Set.2","Set.3","Set.4","Set.5"), sep = " ")
+```
+
+### Create new varible set.played by counting non-NAs
+```{r message=F, warning=false}
+data2<-
+  data1 %>%
+  mutate(newScore = gsub(pattern = "\\(\\d+)",
+                         replacement = "", score))%>%
+  mutate(newScore = gsub(pattern = ("RET"), replacement = "", newScore))%>%
+  separate(newScore,c("Set.1","Set.2","Set.3","Set.4","Set.5"), sep = " ")%>%
+  mutate(data2, sets.played = rowSums(!is.na(select(.,Set.1,Set.2,Set.3,Set.4,Set.5))))
+```
+
+
+### Creating density plot of minutes played by number of sets
+```{r message=F, warning=false}
+ggplot(data2, aes(x = minutes, group = sets.played, fill = sets.played, colour = sets.played) ) + 
+  geom_density() +
+  xlab("Minutes Played") + 
+  ylab("Density") + 
+  theme(legend.position = "top")+
+  labs(title = "Density Plots of minutes Played Per Number of Set Played")+
+  guides(fill = guides(fill= guide_legend(title = " Sets Played")))
+
+```
+The graph displays a higher density for the first set played. It seems that the minutes played and density decrease as they move toward the last set (set 5).
+
+### Creating boxplot of winner's age by tournament name
+```{r message=F, warning=false}
+
+data2<-data2%>%
+  mutate(tourney_name = replace(tourney_name, tourney_name == "Us Open", "US Open"))
+  
+  ggplot(data = data2, aes( x= tourney_name, y = winner_age )) +
+  geom_boxplot(aes(color = tourney_name)) +
+  labs(title = "Boxplot of Age of Winner in Grand Slam Events", color = "Tournament Name")+
+  scale_color_manual(values = c("pink", "green", "blue", "purple", "yellow")) +
+  xlab("Age of Winner")+
+  ylab("Tournament Name")
+```
+Overall, the boxplot of each tournament is rather normal with a few outliers but they all seem equal. the australian open has the lowest mean of the four tournaments.
+
+### graphing count of matches won by top 5
+```{r message=F, warning=false}
+data3<-
+  data2%>%
+  group_by(tourney_name,winner_ioc)%>%
+  summarise(wins = n())%>%
+  mutate(rank_wins = rank(desc(wins)))%>%
+  filter(rank_wins <= 5)
+ggplot(data = data3, aes(x = winner_ioc, y = wins ))+
+  geom_point()+
+  facet_grid(vars(tourney_name))+
+  theme_bw()+
+  ylab("Tournaments Won")+
+  xlab("Winners Olympic Membership")+
+  labs(title = "Top 5 Olympic memberships per Tournament")
+```
+The graphs display the 5 top performing at the grand slam. France has been the best. Argentina appears to have performed with the lowest amount to won of the five. 
+### Create the year column
+```{r}
+data2<- mutate(data2, year = str_extract(tourney_id, "^\\d+"))
+head(data2, 3)
+tail(data2)
+```
+
+### Count of matches won by Top 2 Ioc membership per year
+```{r message=F, warning=false}
+data3<-
+  data2%>%
+  group_by(year,winner_ioc)%>%
+  summarise(wins = n())%>%
+  mutate(rank_wins = rank(desc(wins)))%>%
+  filter(rank_wins <= 2)
+
+
+ggplot(data = data3, aes(x = year, y = wins, colour = winner_ioc ))+
+  geom_point()+
+  aes(color = winner_ioc)+
+  theme_bw()+
+  ylab("Tournaments won")+
+  xlab("Year")+
+  labs(title = "Top 2 Olympic Memberships per year", color = "Olympic Membership")
+```
+
+From this graph, we see that overall FRA has the highest number of tournaments won. while FRA had the lowest number won in 2017, we can see that ESP usually has the lowest number of tournaments won of the 3.
